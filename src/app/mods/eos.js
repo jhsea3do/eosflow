@@ -5,32 +5,7 @@ const eosjs  = require('eosjs');
 const path   = require('path');
 const fs     = require('fs');
 const Config = require('../config');
-
-async function par(proms) {
-    return Promise.all(proms)
-}
-
-async function seq(proms, ms) {
-    let ds = [];
-    for(const prom of proms) {
-        await prom().then((d) => (ds.push(d)))
-        if(ms) {
-          await sleep(ms);
-        }
-    }
-    return Promise.resolve(ds)
-}
-
-async function sleep(ms){
-    return new Promise(resolve => {
-        setTimeout(resolve, ms)
-    })
-}
-
-function log() {
-    const args = _.flatten( ['#', new Date(), _.toArray(arguments)] )
-    console.log.apply(console, args);
-}
+const Helper = require('../helper');
 
 function eosFunc(name) {
     return {
@@ -57,10 +32,8 @@ async function Eos(config, action) {
             .then((d) => (me.accounts=d));
 
     const pairs = {
-        'jobs': jobs,
         'init': init,
         'job': job,
-        'run': run,
         'request': request
     };
 
@@ -68,7 +41,7 @@ async function Eos(config, action) {
         me[k] = pairs[k].bind(me)
     });
 
-    me.run.apply(me, _.slice(arguments, 1) );
+    run.apply(me, _.slice( _.toArray(arguments), 2) );
 
     return me;
 }
@@ -88,24 +61,40 @@ async function init() {
 
 async function run( action ) {
     const me = this;
-    if(action && me[action]) {
-        const f = me[action];
+    let fx = null;
+    try {
+      if(action) {
+        fx = me[action];
+        if ( !fx ) {
+          try{ fx = global[ action ]; }catch(e){}
+        }
+        if ( !fx ) {
+          try{ fx = require( './eos/' + action ); }catch(e){}
+        }
+        if ( !fx ) {
+          try{ fx = eval(action); }catch(e){}
+        }
+      }
+    } catch (e) {
+      // No such method
+    }
+    if(fx) {
         const args = _.slice( _.toArray(arguments), 1 );
         me.init();
-        f.apply(f, args);
+        fx.apply(me, args);
     }
 }
 
 async function request(api, payload, resolve, reject) {
-    return this.api[api] ? this.api[api](payload).then(resolve).catch(reject) : sleep(1);
+    return this.api[api] ? this.api[api](payload).then(resolve).catch(reject) : Helper.sleep(1);
 }
 
 async function job(job, parallel) {
     const me = this;
-    const exec = (parallel === true) ? par : seq;
+    const exec = (parallel === true) ? Helper.par : Helper.seq;
     const tasks = ( job.tasks || [] ).map( task => (
         () => { 
-            log(job.name);
+            Helper.log(job.name);
             const req = [
                 task.api, (task.payload || {}), 
                 eosFunc( task.callback || 'console.log'), 
@@ -114,23 +103,6 @@ async function job(job, parallel) {
         }
     ) );
     return exec(tasks);
-}
-
-async function jobs(parallel) {
-    const me = this;
-    const exec = (parallel === true) ? par : seq;
-    const offset = 1000;
-    const args = _.toArray(arguments);
-    const name = args && args[0] ? args[0] : 'jobs';
-    const items = Config(name);
-    if(items && items.length > 0) {
-        const todos = items.map(
-            item => ( () => me.job(item) )
-        );
-        exec(todos, offset).then(d => {
-            console.log('done', d);
-        });
-    }
 }
 
 async function eosKeys(cfg) {
