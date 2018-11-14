@@ -66,14 +66,16 @@ async function run( action ) {
       if(action) {
         fx = me[action];
         if ( !fx ) {
-          try{ fx = global[ action ]; }catch(e){}
+            try{ fx = global[ action ]; }catch(e){}
         }
         if ( !fx ) {
-          try{ fx = require( './eos/' + action ); }catch(e){}
+            try{ fx = require( './eos/' + action ); }catch(e){}
         }
+        /* eval is evil
         if ( !fx ) {
-          try{ fx = eval(action); }catch(e){}
+            try{ fx = eval(action); }catch(e){}
         }
+        */
       }
     } catch (e) {
       // No such method
