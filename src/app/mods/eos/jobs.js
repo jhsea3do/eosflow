@@ -2,12 +2,13 @@ const _ = require('lodash');
 const Config = require('../../config');
 const Helper = require('../../helper');
 
-async function jobs(parallel) {
+async function jobs(name, parallel) {
     const me = this;
-    const exec = (parallel === true) ? Helper.par : Helper.seq;
+    const exec = (parallel === true 
+                     || parallel === 'true')
+                     ? Helper.par : Helper.seq;
     const offset = 1000;
-    const args = _.toArray(arguments);
-    const name = args && args[0] ? args[0] : 'jobs';
+    name = name || 'jobs';
     const items = Config(name);
     if(items && items.length > 0) {
         const todos = items.map(

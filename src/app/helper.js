@@ -1,7 +1,7 @@
 const _ = require('lodash');
 
 async function par(proms) {
-    return Promise.all(proms)
+    return await Promise.all(proms.map((p) => p()));
 }
 
 async function seq(proms, ms) {
