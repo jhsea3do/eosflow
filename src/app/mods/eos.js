@@ -6,6 +6,7 @@ const path   = require('path');
 const fs     = require('fs');
 const Config = require('../config');
 const Helper = require('../helper');
+const Wallet = require('./eos_wallet');
 
 function eosFunc(name) {
     return {
@@ -27,22 +28,18 @@ function eosFunc(name) {
 async function Eos(config, action) {
     const me = this; 
     me.config = config;
-
-    await eosKeys(config.app.eos)
+    me.wallet = Wallet.apply( Wallet, [ config.app.eos.wallet ] );
+    await eosKeys(me.wallet)
             .then((d) => (me.accounts=d));
-
     const pairs = {
         'init': init,
         'job': job,
         'request': request
     };
-
     Object.keys(pairs).forEach((k) => {
         me[k] = pairs[k].bind(me)
     });
-
     run.apply(me, _.slice( _.toArray(arguments), 2) );
-
     return me;
 }
 
@@ -107,7 +104,7 @@ async function job(job, parallel) {
     return exec(tasks);
 }
 
-async function eosKeys(cfg) {
+async function eosKeysFromPlainText(cfg) {
     const name = cfg.name; // 'devnet';
     const base = cfg.base; // path.join(process.env.HOME, 'opt', 'eos', 'data', name);
     const dir = path.join(base, 'keys'); 
@@ -122,6 +119,18 @@ async function eosKeys(cfg) {
         ks[acc] = key;
     });
     return ks;
+}
+
+async function eosKeys(wallet) {
+    return wallet.open().then((res) => {
+        return (res.status == 200 ? res : false);
+    }).then(wallet.unlock).then((res) => {
+        return (res.status == 200 ? res : false);
+    }).then(wallet.listKeys).then((res) => {
+        return (res.status == 200 ? res : false);
+    }).then((res) => (res.json())).then((pairs) => {
+        return pairs.map(pair => pair[1]);
+    });
 }
 
 exports = module.exports = Eos;

@@ -2,7 +2,10 @@ app:
   eos:
     name: mainnet
     base: /opt/eos/data/mainnet
-
+    wallet:
+      httpEndpoint: 'http://127.0.0.1:55553'
+      name: 'default'
+      password: 'PWxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 eos:
   # https://medium.com/coinmonks/how-to-use-eosjs-api-1-770b037b22ad
   # broadcast: true
