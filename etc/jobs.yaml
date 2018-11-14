@@ -1,0 +1,11 @@
+- name: job1
+  tasks:
+  - api: 'getInfo'
+    payload:
+    callback: console.nil
+- name: job2
+  tasks:
+  - api: 'getInfo'
+    payload:
+    callback: console.nil
+
