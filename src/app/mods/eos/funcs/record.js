@@ -30,24 +30,27 @@ function parse(obj) {
             for ( const trace of traces ) {
                 // console.log(trace);
                 const detail = trace.act ? trace.act.data : {};   
-                if ( detail.type == "buy" ) {
+                if ( detail.type == "buy" || detail.type == "sell" ) {
                     if ( detail.in ) {
+                        const type = ( detail.type == "buy" ) ? "in" : "out";
                         const pair = detail.in.split(" ");
                         // result['in'] = { "symbol":  pair[1], "amount": _.toNumber(pair[0]) }
-                        result['in_symbol'] = pair[1];
-                        result['in'] = _.toNumber(pair[0]);
+                        result[type+'_symbol'] = pair[1];
+                        result[type] = _.toNumber(pair[0]);
                     }
                     if ( detail.out ) {
+                        const type = ( detail.type == "buy" ) ? "out" : "in";
                         const pair = detail.out.split(" ");
-                        result['out_symbol'] = pair[1];
-                        result['out'] = _.toNumber(pair[0]);
+                        result[type+'_symbol'] = pair[1];
+                        result[type] = _.toNumber(pair[0]);
                     }
                     if ( detail.fee ) {
                         const pair = detail.fee.split(" ");
                         result['fee_symbol'] = pair[1];
                         result['fee'] = _.toNumber(pair[0]);
                     }
-                } else if ( detail.memo && detail.memo.match(/reserve/) ) {
+                } else if ( detail.memo && 
+                    ( detail.memo.match(/reserve/) || detail.memo.match(/withdraw/) ) ) {
                     if ( detail.quantity ) {
                         const pair = detail.quantity.split(" ");
                         result['reserve_symbol'] = pair[1];
