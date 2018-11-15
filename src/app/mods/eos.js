@@ -6,28 +6,15 @@ const path   = require('path');
 const fs     = require('fs');
 const Config = require('../config');
 const Helper = require('../helper');
-const Wallet = require('./eos_wallet');
-
-function eosFunc(name) {
-    return {
-        'console.log': consoleLog,
-        'console.nil': consoleNil
-    }[name];
-
-    function consoleNil(obj) {
-        return obj;
-    }
-
-    function consoleLog(obj) {
-        // console.log(JSON.stringify(obj));
-        console.log(obj);
-        return obj;
-    }
-}
+const Wallet = require('./eos/wallet');
+const Tsdb   = require('./eos/tsdb');
+const Funcs  = require('./eos/funcs');
 
 async function Eos(config, action) {
     const me = this; 
     me.config = config;
+    me.tsdb = Tsdb.apply( Tsdb, [ config.app.eos.influxdb ] );
+    // me.tsdb.upsert("test1,a=1,b=2 value=100.0").then((res));
     me.wallet = Wallet.apply( Wallet, [ config.app.eos.wallet ] );
     await eosKeys(me.wallet)
             .then((d) => (me.accounts=d));
@@ -66,7 +53,7 @@ async function run( action ) {
             try{ fx = global[ action ]; }catch(e){}
         }
         if ( !fx ) {
-            try{ fx = require( './eos/' + action ); }catch(e){}
+            try{ fx = require( './eos/flows/' + action ); }catch(e){}
         }
         /* eval is evil
         if ( !fx ) {
@@ -84,20 +71,22 @@ async function run( action ) {
     }
 }
 
-async function request(api, payload, resolve, reject) {
-    return this.api[api] ? this.api[api](payload).then(resolve).catch(reject) : Helper.sleep(1);
+async function request(api, payload, options, resolve, reject) {
+    return this.api[api] ? this.api[api](payload).then((d) => ( _.assign(options, { "result": d } )  ))
+             .then(resolve).catch(reject) : Helper.sleep(1);
 }
 
 async function job(job, parallel) {
     const me = this;
     const exec = (parallel === true) ? Helper.par : Helper.seq;
-    const tasks = ( job.tasks || [] ).map( task => (
+    const tasks = ( job.tasks || [] ).map( (task, i) => (
         () => { 
             Helper.log(job.name);
+            const options = { "name": job.name, "seq": i, "task": task };
             const req = [
-                task.api, (task.payload || {}), 
-                eosFunc( task.callback || 'console.log'), 
-                eosFunc( task.failover || 'console.log') ];
+                task.api, (task.payload || {}),  options, 
+                Funcs(task.callback || 'console.obj').bind(me), 
+                Funcs(task.failover || 'console.obj').bind(me) ];
             return me.request.apply(me, req);
         }
     ) );

@@ -1,6 +1,8 @@
+'use strict';
+
 const _ = require('lodash');
-const Config = require('../../config');
-const Helper = require('../../helper');
+const Config = require('../../../config');
+const Helper = require('../../../helper');
 
 async function jobs(name, parallel) {
     const me = this;
